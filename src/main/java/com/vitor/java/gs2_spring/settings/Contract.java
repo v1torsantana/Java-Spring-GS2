@@ -1,17 +1,17 @@
-package com.vitor.java.gs2_spring.settings.operations;
+package com.vitor.java.gs2_spring.settings;
 
 import java.util.Date;
 
 public class Contract {
     private int clientID;
-    private int instalation_number;
+    private int installation_number;
     private Date start_data;
     private int contract_durationMonths;  // Duração em meses
     private boolean contract_activity;
 
-    public Contract(int clientID, int instalation_number, Date start_data, int contract_durationMonths, boolean contract_activity) {
+    public Contract(int clientID, int installation_number, Date start_data, int contract_durationMonths, boolean contract_activity) {
         this.clientID = clientID;
-        this.instalation_number = instalation_number;
+        this.installation_number = installation_number;
         this.start_data = start_data;
         this.contract_durationMonths = contract_durationMonths;
         this.contract_activity = contract_activity;
@@ -21,8 +21,8 @@ public class Contract {
         return clientID;
     }
 
-    public int getInstalation_number() {
-        return instalation_number;
+    public int getInstallation_number() {
+        return installation_number;
     }
 
     public Date getStart_data() {
@@ -41,8 +41,8 @@ public class Contract {
         this.clientID = clientID;
     }
 
-    public void setInstalation_number(int instalation_number) {
-        this.instalation_number = instalation_number;
+    public void setInstallation_number(int installation_number) {
+        this.installation_number = installation_number;
     }
 
     public void setStart_data(Date start_data) {
