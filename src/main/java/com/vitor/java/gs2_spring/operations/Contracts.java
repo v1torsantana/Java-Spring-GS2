@@ -1,4 +1,4 @@
-package com.vitor.java.gs2_spring.settings.operations;
+package com.vitor.java.gs2_spring.operations;
 
 import com.vitor.java.gs2_spring.settings.Contract;
 import org.springframework.http.ResponseEntity;
