@@ -1,13 +1,21 @@
 package com.vitor.java.gs2_spring.settings;
 
+import java.util.Random;
+
 public class Installation {
     private int installation_number;
     private String installation_address;
     private String installation_CEP;
     private boolean installation_activity;
 
-    public Installation(int installation_number, String installation_address, String installation_CEP, boolean installation_activity) {
-        this.installation_number = installation_number;
+    public static int generator_installation_number(){
+        int installation_no = 0;
+        Random generator = new Random();
+        installation_no = generator.nextInt(10000, 99999);
+        return installation_no;
+    }
+    public Installation(String installation_address, String installation_CEP, boolean installation_activity) {
+        this.installation_number = generator_installation_number();
         this.installation_address = installation_address;
         this.installation_CEP = installation_CEP;
         this.installation_activity = installation_activity;
