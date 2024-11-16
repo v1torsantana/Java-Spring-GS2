@@ -35,7 +35,7 @@ public class Client {
         return client_CPF;
     }
 
-    public String isClient_type() {
+    public String getClient_type() {
         return client_type;
     }
 

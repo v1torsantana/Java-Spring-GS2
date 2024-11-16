@@ -1,6 +1,7 @@
 package com.vitor.java.gs2_spring.operations;
 
 import com.vitor.java.gs2_spring.settings.Installation;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.*;
@@ -18,17 +19,28 @@ public class Installations {
 
     @PostMapping("/register-installation")
     public ResponseEntity<String> setInstallationInfos(@RequestBody Installation installation){
-        installations_database.put(installation.getInstallation_number(), installation);
-        return ResponseEntity.ok("Instalação adicionada com sucesso!");
+        String installation_numberString = String.valueOf(installation.getInstallation_number());
+        if(installation_numberString.length()==6){
+            if(installation.getInstallation_CEP().length()==8){
+                installations_database.put(installation.getInstallation_number(), installation);
+                return ResponseEntity.ok("Instalação adicionada com sucesso!");
+            }
+            else{
+                return ResponseEntity.badRequest().body("Número do CEP deve ter 8 dígitos");
+            }
+        }
+        else{
+            return ResponseEntity.badRequest().body("Número de instalação deve ter 6 dígitos");
+        }
+
     }
 
     @GetMapping("/show-installation/{installation_number}")
-    public ResponseEntity<Installation> getInstallationInfos(@PathVariable int installation_number){
+    public ResponseEntity<Installation> getInstallationInfos(@PathVariable int installation_number) {
         Installation installation = installations_database.get(installation_number);
-        if(installation != null){
+        if (installation != null) {
             return ResponseEntity.ok(installation);
-        }
-        else{
+        } else {
             return ResponseEntity.notFound().build();
         }
     }
@@ -45,15 +57,34 @@ public class Installations {
     }
 
     @PutMapping("/update-installation/{installation_number}")
-    public ResponseEntity<String> updateInstallationInfos(@PathVariable int installation_number, @RequestBody Installation installation){
-        if (installations_database.containsKey(installation_number)){
-            installations_database.put(installation_number, installation);
-            return ResponseEntity.ok("Instalação atualizada com sucesso!");
+    public ResponseEntity<String> updateInstallationInfos(
+            @PathVariable int installation_number,
+            @RequestBody Installation installation) {
+
+        String installation_numberString = String.valueOf(installation.getInstallation_number());
+        if (installation_numberString.length() != 6) {
+            return ResponseEntity.badRequest().body("O número da instalação deve ter 6 dígitos.");
         }
-        else{
+
+        if (installation.getInstallation_CEP().length() != 8) {
+            return ResponseEntity.badRequest().body("O CEP deve ter 8 dígitos.");
+        }
+
+        if (!installations_database.containsKey(installation_number)) {
             return ResponseEntity.notFound().build();
         }
+
+        // Atualiza os campos da instalação
+        Installation existingInstallation = installations_database.get(installation_number);
+        existingInstallation.setInstallation_CEP(installation.getInstallation_CEP());
+        existingInstallation.setInstallation_address(installation.getInstallation_address());
+        existingInstallation.setInstallation_activity(installation.isInstallation_activity());
+
+        installations_database.put(installation_number, existingInstallation);
+
+        return ResponseEntity.ok("Instalação atualizada com sucesso!");
     }
+
 
     @DeleteMapping("/delete-installation/{installation_number}")
     public ResponseEntity<String> deleteInstallationInfos(@PathVariable int installation_number){
