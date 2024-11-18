@@ -1,9 +1,10 @@
 package com.vitor.java.gs2_spring.settings;
 
 import java.util.Random;
+import java.util.UUID;
 
 public class Client {
-    private int client_ID;
+    private final UUID client_ID;
     private String client_name;
     private String client_address;
     private String client_CPF;
@@ -11,12 +12,10 @@ public class Client {
     private String client_CEP;
     private boolean client_activity;
 
-    private static int generator_id(){
-        int id = 0;
-        Random generator = new Random();
-        id = generator.nextInt(10000, 99999);
-        return id;
-    }
+     private static UUID generator_id(){
+            UUID uuid = UUID.randomUUID();
+            return uuid;
+        }
 
     public Client(String client_name, String client_address, String client_CPF, String client_type, String client_CEP, boolean client_activity) {
         this.client_ID = Client.generator_id();
@@ -29,7 +28,7 @@ public class Client {
     }
 
 
-    public int getClientID() {
+    public UUID getClientID() {
         return client_ID;
     }
 
@@ -55,10 +54,6 @@ public class Client {
 
     public boolean isClient_activity() {
         return client_activity;
-    }
-
-    public void setClientID(int clientID) {
-        this.client_ID = clientID;
     }
 
     public void setClient_name(String client_name) {

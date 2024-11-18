@@ -5,10 +5,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+
 
 @RestController
 @RequestMapping("/contracts")
@@ -19,6 +23,13 @@ public class Contracts {
     @PostMapping("/register-contracts")
     public ResponseEntity<String> setContractsInfos(@RequestBody Contract contract){
         contract_database.put(contract.getInstallation_number(), contract);
+        LocalDate startDate = contract.getStart_data().toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+        if(startDate.plusMonths(contract.getContract_durationMonths()).isBefore(LocalDate.now())){
+            contract.setContract_activity(false);
+            contract_database.put(contract.getInstallation_number(), contract);
+        }
         return ResponseEntity.ok("Contrato adicionado com sucesso!");
     }
 
@@ -47,6 +58,10 @@ public class Contracts {
     @PutMapping("/update-contracts/{installation_number}")
     public ResponseEntity<String> updateContractsInfos(@PathVariable int installation_number, @RequestBody Contract contract){
         if(contract_database.containsKey(installation_number)){
+            Contract existingContract = contract_database.get(installation_number);
+            existingContract.setContract_activity(contract.isContract_activity());
+            existingContract.setContract_durationMonths(contract.getContract_durationMonths());
+            existingContract.setStart_data(contract.getStart_data());
             contract_database.put(installation_number, contract);
             return ResponseEntity.ok("Contrato atualizado com sucesso!");
         }
@@ -56,7 +71,8 @@ public class Contracts {
     @DeleteMapping("/delete-contract/{installation_number}")
     public ResponseEntity<String> deleteContractsInfos(@PathVariable int installation_number){
         if(contract_database.containsKey(installation_number)){
-            contract_database.remove(installation_number);
+            Contract contract = contract_database.get(installation_number);
+            contract.setContract_activity(false);
             return ResponseEntity.ok("Contrato removido com sucesso!");
         }
         else{

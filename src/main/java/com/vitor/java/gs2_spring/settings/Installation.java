@@ -3,7 +3,7 @@ package com.vitor.java.gs2_spring.settings;
 import java.util.Random;
 
 public class Installation {
-    private int installation_number;
+    private final int installation_number;
     private String installation_address;
     private String installation_CEP;
     private boolean installation_activity;
@@ -23,10 +23,6 @@ public class Installation {
 
     public int getInstallation_number() {
         return installation_number;
-    }
-
-    public void setInstallation_number(int installation_number) {
-        this.installation_number = installation_number;
     }
 
     public String getInstallation_address() {

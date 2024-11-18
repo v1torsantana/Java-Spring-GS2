@@ -47,6 +47,10 @@ public class Installations {
     @PutMapping("/update-installation/{installation_number}")
     public ResponseEntity<String> updateInstallationInfos(@PathVariable int installation_number, @RequestBody Installation installation){
         if (installations_database.containsKey(installation_number)){
+            Installation existingInstallation = installations_database.get(installation_number);
+            existingInstallation.setInstallation_activity(installation.isInstallation_activity());
+            existingInstallation.setInstallation_CEP(installation.getInstallation_CEP());
+            existingInstallation.setInstallation_address(installation.getInstallation_address());
             installations_database.put(installation_number, installation);
             return ResponseEntity.ok("Instalação atualizada com sucesso!");
         }
@@ -58,7 +62,8 @@ public class Installations {
     @DeleteMapping("/delete-installation/{installation_number}")
     public ResponseEntity<String> deleteInstallationInfos(@PathVariable int installation_number){
         if (installations_database.containsKey(installation_number)){
-            installations_database.remove(installation_number);
+            Installation installation = installations_database.get(installation_number);
+            installation.setInstallation_activity(false);
             return ResponseEntity.ok("Instalação removida com sucesso!");
         }
         else{
