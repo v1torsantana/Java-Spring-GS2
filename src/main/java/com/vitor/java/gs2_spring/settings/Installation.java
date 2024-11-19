@@ -1,27 +1,27 @@
 package com.vitor.java.gs2_spring.settings;
 
 import java.util.Random;
+import java.util.UUID;
 
 public class Installation {
-    private final int installation_number;
+    private final UUID installation_number;
     private String installation_address;
     private String installation_CEP;
     private boolean installation_activity;
 
-    public static int generator_installation_number(){
-        int installation_no = 0;
-        Random generator = new Random();
-        installation_no = generator.nextInt(10000, 99999);
-        return installation_no;
+    private static UUID generator_id(){
+        UUID uuid = UUID.randomUUID();
+        return uuid;
     }
+
     public Installation(String installation_address, String installation_CEP, boolean installation_activity) {
-        this.installation_number = generator_installation_number();
+        this.installation_number = Installation.generator_id();
         this.installation_address = installation_address;
         this.installation_CEP = installation_CEP;
         this.installation_activity = installation_activity;
     }
 
-    public int getInstallation_number() {
+    public UUID getInstallation_number() {
         return installation_number;
     }
 
@@ -48,4 +48,5 @@ public class Installation {
     public void setInstallation_activity(boolean installation_activity) {
         this.installation_activity = installation_activity;
     }
+
 }
