@@ -2,18 +2,16 @@ package com.vitor.java.gs2_spring.operations;
 
 import com.vitor.java.gs2_spring.connection.Connect;
 import com.vitor.java.gs2_spring.settings.Consumption;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.util.Map;
+import java.sql.*;
+import java.time.LocalDate;
+import java.time.format.TextStyle;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
 
 @RestController
 @RequestMapping("/consumption")
@@ -28,11 +26,13 @@ public class Consumptions extends Connect {
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             String id = String.valueOf(consumption.getConsumption_id());
-            pstmt.setString(1, id);
+            long timestampLong = consumption.getTimestamp_measuring();
+            Timestamp tsmeasuring = new Timestamp(timestampLong);
 
+            pstmt.setString(1, id);
             pstmt.setString(2, consumption.getInstallation_number());
             pstmt.setDouble(3, consumption.getConsumption_kWh());
-            pstmt.setLong(4, consumption.getTimestamp_measuring());
+            pstmt.setTimestamp(4, tsmeasuring);
             pstmt.setTimestamp(5, consumption.getStart_data());
 
             pstmt.executeUpdate();
@@ -42,5 +42,85 @@ public class Consumptions extends Connect {
         }
 
         return ResponseEntity.ok("Adicionado com sucesso!");
+    }
+
+    @GetMapping("/show-month/{installation_number}")
+    public ResponseEntity<Map<String, Object>> showMonthConsumption(@PathVariable("installation_number") String installationNumber) {
+        List<Consumption> consumptions = getMonthlyConsumptionData(installationNumber);
+
+        if (consumptions.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Sem dados"));
+        }
+
+        Map<String, Object> consumptionData = calculateMonthlyConsumption(consumptions);
+
+        return ResponseEntity.ok(consumptionData);
+    }
+
+    private List<Consumption> getMonthlyConsumptionData(String installationNumber) {
+
+        LocalDate firstDay = LocalDate.now().withDayOfMonth(1);
+        LocalDate lastDay = firstDay.withDayOfMonth(firstDay.lengthOfMonth());
+
+        String sql = "SELECT * FROM consumptions WHERE installation_number = ? AND start_data BETWEEN ? AND ? ORDER BY start_data";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, installationNumber);
+            pstmt.setTimestamp(2, Timestamp.valueOf(firstDay.atStartOfDay()));
+            pstmt.setTimestamp(3, Timestamp.valueOf(lastDay.atStartOfDay().plusDays(1)));
+
+            ResultSet rs = pstmt.executeQuery();
+
+            List<Consumption> consumptions = new ArrayList<>();
+            while (rs.next()) {
+
+                Consumption consumption = new Consumption(
+                        rs.getString("installation_number"),
+                        rs.getDouble("consumption_kWh"),
+                        rs.getTimestamp("timestamp_measuring").getTime(),
+                        rs.getTimestamp("start_data")
+                );
+
+                consumptions.add(consumption);
+            }
+
+            return consumptions;
+        } catch (SQLException e) {
+            throw new RuntimeException("Ocorreu um erro", e);
+        }
+    }
+
+    private Map<String, Object> calculateMonthlyConsumption(List<Consumption> consumptions) {
+        if (consumptions.isEmpty()) {
+            return Map.of("message", "Sem dados");
+        }
+
+        Consumption first = consumptions.get(0);
+        Consumption last = consumptions.get(consumptions.size() - 1);
+
+        double monthlyConsumption = last.getConsumption_kWh() - first.getConsumption_kWh();
+        long daysInMonth = ChronoUnit.DAYS.between(first.getStart_data().toLocalDateTime().toLocalDate(), last.getStart_data().toLocalDateTime().toLocalDate());
+
+        double dailyConsumption = 10.4;
+        if (daysInMonth > 0) {
+            dailyConsumption = monthlyConsumption / daysInMonth;
+        }
+
+        long timestampCalculation = System.currentTimeMillis() / 1000;
+
+        String month = first.getStart_data().toLocalDateTime().getMonth().getDisplayName(TextStyle.FULL, new Locale("pt", "BR"));
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("instalacao_uuid", first.getInstallation_number());
+        result.put("timestamp_calculo", timestampCalculation);
+        result.put("dia_referencia", String.valueOf(first.getStart_data().toLocalDateTime().getDayOfMonth()));
+        result.put("mes_referencia", month);
+        result.put("ano_referencia", String.valueOf(first.getStart_data().toLocalDateTime().getYear()));
+        result.put("dias_para_acabar_o_mes", String.valueOf(last.getStart_data().toLocalDateTime().getDayOfMonth()));
+        result.put("consumo_mensal_medio_kwh", monthlyConsumption);
+        result.put("consumo_diario_medio_kwh", dailyConsumption);
+        result.put("consumo_mensal_estimado_kwh", dailyConsumption * daysInMonth);
+
+        return result;
     }
 }

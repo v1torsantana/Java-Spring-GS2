@@ -3,7 +3,6 @@ package com.vitor.java.gs2_spring.settings;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.Date;
 import java.util.UUID;
 
 public class Consumption {
