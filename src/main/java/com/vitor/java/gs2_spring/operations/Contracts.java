@@ -57,9 +57,10 @@ public class Contracts extends Connect {
 
                 String sql = "INSERT INTO contracts (start_data, contract_duration, contract_activity, client_id, installation_number, contract_number) VALUES (?, ?, ?, ?, ?, ?)";
 
+
                 pstmt = conn.prepareStatement(sql);
                 String c_number = String.valueOf(contract.getContract_number());
-                pstmt.setLong(1, contract.getTimestamp());
+                pstmt.setTimestamp(1, contract.getTimestamp());
                 pstmt.setInt(2, contract.getContract_durationMonths());
                 pstmt.setBoolean(3, contract.isContract_activity());
                 pstmt.setString(4, contract.getClientId());
@@ -91,9 +92,11 @@ public class Contracts extends Connect {
                 while (rs.next()) {
                     Map<String, Object> contractMap = new HashMap<>();
                     contractMap.put("contract_number", rs.getString("contract_number"));
-                    contractMap.put("start_data", rs.getDate("start_data"));
-                    contractMap.put("contract_duration", rs.getDate("contract_duration"));
+                    contractMap.put("start_data", rs.getTimestamp("start_data"));
+                    contractMap.put("contract_duration", rs.getInt("contract_duration"));
                     contractMap.put("contract_activity", rs.getString("contract_activity"));
+                    contractMap.put("client_id", rs.getString("client_id"));
+                    contractMap.put("installation_number", rs.getString("installation_number"));
                     contractList.add(contractMap);
                 }
             }
@@ -107,38 +110,70 @@ public class Contracts extends Connect {
 
 
     @GetMapping("/show-contracts")
-    public ResponseEntity<List<Contract>> getContractsInfos(){
-        if (contract_database.isEmpty()){
-            return ResponseEntity.noContent().build();
+    public ResponseEntity<List<Map<String, Object>>> getContractsInfos() {
+        List<Map<String, Object>> contractList = new ArrayList<>();
+
+        String sql = "SELECT * FROM contracts";
+
+        try (
+                PreparedStatement pstmt = conn.prepareStatement(sql);
+                ResultSet rs = pstmt.executeQuery()
+        ) {
+            while (rs.next()) {
+                Map<String, Object> contractMap = new HashMap<>();
+                contractMap.put("contract_number", rs.getString("contract_number"));
+                contractMap.put("start_data", rs.getDate("start_data"));
+                contractMap.put("contract_duration", rs.getInt("contract_duration"));
+                contractMap.put("contract_activity", rs.getBoolean("contract_activity"));
+                contractMap.put("client_id", rs.getString("client_id"));
+                contractMap.put("installation_number", rs.getString("installation_number"));
+                contractList.add(contractMap);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
-        else{
-            List<Contract> contractList = new ArrayList<>(contract_database.values());
+
+        if (contractList.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        } else {
             return ResponseEntity.ok(contractList);
         }
     }
 
-    @PutMapping("/update-contracts/{installation_number}")
-    public ResponseEntity<String> updateContractsInfos(@PathVariable int installation_number, @RequestBody Contract contract){
-        if(contract_database.containsKey(installation_number)){
-            Contract existingContract = contract_database.get(installation_number);
-            existingContract.setContract_activity(contract.isContract_activity());
-            existingContract.setContract_durationMonths(contract.getContract_durationMonths());
-            existingContract.setStart_data(contract.getStart_data());
-            contract_database.put(installation_number, contract);
-            return ResponseEntity.ok("Contrato atualizado com sucesso!");
-        }
-        return ResponseEntity.notFound().build();
-    }
 
-    @DeleteMapping("/delete-contract/{installation_number}")
-    public ResponseEntity<String> deleteContractsInfos(@PathVariable int installation_number){
-        if(contract_database.containsKey(installation_number)){
-            Contract contract = contract_database.get(installation_number);
-            contract.setContract_activity(false);
-            return ResponseEntity.ok("Contrato removido com sucesso!");
-        }
-        else{
+    @PutMapping("/update-contracts/{contract_number}")
+    public ResponseEntity<String> updateContractsInfos(@PathVariable String contract_number, @RequestBody Contract contract) throws SQLException {
+        String sql = "UPDATE contracts SET start_data=?, contract_duration=?, contract_activity=? WHERE contract_number=?";
+        pstmt = conn.prepareStatement(sql);
+        pstmt.setTimestamp(1, contract.getTimestamp());
+        pstmt.setInt(2, contract.getContract_durationMonths());
+        pstmt.setBoolean(3, contract.isContract_activity());
+        pstmt.setString(4, contract_number);
+
+        int rowsUpdated = pstmt.executeUpdate();
+
+        if (rowsUpdated > 0) {
+            return ResponseEntity.ok("Contrato atualizado com sucesso!");
+        } else {
             return ResponseEntity.notFound().build();
         }
     }
+
+
+    @DeleteMapping("/delete-contract/{contract_number}")
+    public ResponseEntity<String> deleteContractsInfos(@PathVariable String contract_number) throws SQLException {
+        String sql = "UPDATE contracts SET contract_activity=? WHERE contract_number=?";
+        pstmt = conn.prepareStatement(sql);
+        pstmt.setBoolean(1, false);
+        pstmt.setString(2, contract_number);
+        int rowsUpdated = pstmt.executeUpdate();
+
+        if (rowsUpdated > 0) {
+            return ResponseEntity.ok("Contrato desativado com sucesso!");
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
 }

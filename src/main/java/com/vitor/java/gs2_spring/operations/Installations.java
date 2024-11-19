@@ -115,6 +115,7 @@ public class Installations extends Connect {
         pstmt.executeUpdate();
         return ResponseEntity.ok("Instalação atualizada com sucesso!");
     }
+
     @DeleteMapping("/delete-installation/{installation_number}")
     public ResponseEntity<String> deleteInstallationInfos(@PathVariable String installation_number) throws SQLException {
         String sql = "UPDATE installations SET installation_activity=? WHERE installation_number=?";

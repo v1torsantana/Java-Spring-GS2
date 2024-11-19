@@ -1,5 +1,7 @@
 package com.vitor.java.gs2_spring.settings;
 
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -14,7 +16,7 @@ public class Contract {
     private Date start_data;
     private int contract_durationMonths;
     private boolean contract_activity;
-    private long timestamp;
+    private Timestamp timestamp;
 
 
     private static UUID generator_id(){
@@ -22,14 +24,12 @@ public class Contract {
         return uuid;
     }
 
-    private long timestamp_calculator(){
-        LocalDateTime now = LocalDateTime.now();
-        Instant instant = now.toInstant(ZoneOffset.UTC);
-        long timestamp = instant.getEpochSecond();
-        return timestamp;
+    private static Timestamp timestamp_calculator(){
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        return Timestamp.valueOf(now);
     }
 
-    public Contract(long timestamp, Date start_data, int contract_durationMonths, boolean contract_activity) {
+    public Contract(Timestamp timestamp, Date start_data, int contract_durationMonths, boolean contract_activity) {
         this.timestamp = timestamp;
         this.contract_number = Contract.generator_id();
         this.start_data = start_data;
@@ -37,8 +37,8 @@ public class Contract {
         this.contract_activity = contract_activity;
     }
 
-    public long getTimestamp() {
-        return timestamp;
+    public Timestamp getTimestamp() {
+        return timestamp_calculator();
     }
 
     public Date getStart_data() {
