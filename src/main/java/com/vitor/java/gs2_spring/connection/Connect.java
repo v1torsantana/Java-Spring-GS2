@@ -6,7 +6,7 @@ public class Connect {
 
     private static final String url = "jdbc:mysql://localhost:3306/sunny_meter";
     private static final String user = "root";
-    private static final String password = "Falcao0077@";
+    private static final String password = System.getenv("DB_PASSWORD");
 
     public static Connection connect() {
         Connection conn = null;
