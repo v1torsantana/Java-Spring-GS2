@@ -21,27 +21,47 @@ public class Consumptions extends Connect {
     PreparedStatement pstmt = null;
 
     @PostMapping("/register-consumption")
-    public ResponseEntity<String> createConsumption(@RequestBody Consumption consumption) {
+    public ResponseEntity<Map<String, Object>> createConsumption(@RequestBody Consumption consumption) throws SQLException {
+        Map<String, Object> response = new HashMap<>();
         String sql = "INSERT INTO consumptions (consumpt_id, installation_number, consumption_kWh, timestamp_measuring, start_data) VALUES (?, ?, ?, ?, ?)";
 
-        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            String id = String.valueOf(consumption.getConsumption_id());
-            long timestampLong = consumption.getTimestamp_measuring();
-            Timestamp tsmeasuring = new Timestamp(timestampLong);
+        String check_installation = "SELECT COUNT(*) FROM installations WHERE installation_number=?";
+        pstmt = conn.prepareStatement(check_installation);
+        pstmt.setString(1, consumption.getInstalation_number());
+        ResultSet rs = pstmt.executeQuery();
 
-            pstmt.setString(1, id);
-            pstmt.setString(2, consumption.getInstallation_number());
-            pstmt.setDouble(3, consumption.getConsumption_kWh());
-            pstmt.setTimestamp(4, tsmeasuring);
-            pstmt.setTimestamp(5, consumption.getStart_data());
-
-            pstmt.executeUpdate();
-
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+        if(rs.next() && rs.getInt(1)==0){
+            response.put("error", "Instalação não encontrada!");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
         }
 
-        return ResponseEntity.ok("Adicionado com sucesso!");
+        if (conn!= null) {
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                String id = String.valueOf(consumption.getConsumption_id());
+                long timestampLong = consumption.getTimestamp_measuring();
+                Timestamp tsmeasuring = new Timestamp(timestampLong);
+
+                pstmt.setString(1, id);
+                pstmt.setString(2, consumption.getInstallation_number());
+                pstmt.setDouble(3, consumption.getConsumption_kWh());
+                pstmt.setTimestamp(4, tsmeasuring);
+                pstmt.setTimestamp(5, consumption.getStart_data());
+
+                pstmt.executeUpdate();
+
+                response.put("consumption_id", consumption.getConsumption_id());
+                response.put("installation_number", consumption.getInstallation_number());
+                response.put("consumption_kWh", consumption.getConsumptionkWh());
+                response.put("timestamp_measuring", consumption.getTimestamp_measuring());
+                response.put("start_data", consumption.getStart_data());
+
+                return ResponseEntity.ok(response);
+
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        }response.put("error", "Conexão com o banco falhou.");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 
     @GetMapping("/show-month/{installation_number}")

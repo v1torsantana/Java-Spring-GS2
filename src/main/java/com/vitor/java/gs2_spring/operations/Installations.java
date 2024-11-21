@@ -172,7 +172,6 @@ public class Installations extends Connect {
         }
         else{
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
-
         }
     }
 }
