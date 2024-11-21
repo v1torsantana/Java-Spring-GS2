@@ -65,87 +65,77 @@ public class Consumptions extends Connect {
     }
 
     @GetMapping("/show-month/{installation_number}")
-    public ResponseEntity<Map<String, Object>> showMonthConsumption(@PathVariable("installation_number") String installationNumber) {
-        List<Consumption> consumptions = getMonthlyConsumptionData(installationNumber);
+    public ResponseEntity<Map<String, Object>> showMonthlyConsumption(@PathVariable("installation_number") String installationNumber) {
+        try {
+            List<Consumption> consumptions = fetchConsumptionData(installationNumber);
 
-        if (consumptions.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Sem dados"));
+            if (consumptions.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Sem dados"));
+            }
+
+            Map<String, Object> consumptionData = computeMonthlyConsumption(consumptions);
+            return ResponseEntity.ok(consumptionData);
+        } catch (SQLException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Erro ao acessar o banco de dados"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Erro inesperado: " + e.getMessage()));
         }
-
-        Map<String, Object> consumptionData = calculateMonthlyConsumption(consumptions);
-
-        return ResponseEntity.ok(consumptionData);
     }
 
-    private List<Consumption> getMonthlyConsumptionData(String installationNumber) {
-        LocalDate firstDay = LocalDate.now().withDayOfMonth(1);
-        LocalDate lastDay = firstDay.withDayOfMonth(firstDay.lengthOfMonth());
+    private List<Consumption> fetchConsumptionData(String installationNumber) throws SQLException {
+        LocalDate startOfMonth = LocalDate.now().withDayOfMonth(1);
+        LocalDate endOfMonth = startOfMonth.withDayOfMonth(startOfMonth.lengthOfMonth());
 
+        String query = "SELECT installation_number, consumption_kWh, timestamp_measuring, start_data "
+                + "FROM consumptions WHERE installation_number = ? AND start_data BETWEEN ? AND ? ORDER BY start_data";
 
-
-        String sql = "SELECT *  FROM consumptions WHERE installation_number = ? AND start_data BETWEEN ? AND? ORDER BY start_data";
-
-        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = conn.prepareStatement(query)) {
             pstmt.setString(1, installationNumber);
-            pstmt.setTimestamp(2, Timestamp.valueOf(firstDay.atStartOfDay()));
-            pstmt.setTimestamp(3, Timestamp.valueOf(lastDay.atStartOfDay().plusDays(1)));
+            pstmt.setTimestamp(2, Timestamp.valueOf(startOfMonth.atStartOfDay()));
+            pstmt.setTimestamp(3, Timestamp.valueOf(endOfMonth.atTime(23, 59, 59)));
 
             ResultSet rs = pstmt.executeQuery();
-
             List<Consumption> consumptions = new ArrayList<>();
-            while (rs.next()) {
 
+            while (rs.next()) {
                 Consumption consumption = new Consumption(
                         rs.getString("installation_number"),
                         rs.getDouble("consumption_kWh"),
                         rs.getTimestamp("timestamp_measuring").getTime(),
                         rs.getTimestamp("start_data")
                 );
-
                 consumptions.add(consumption);
             }
-
             return consumptions;
-        } catch (SQLException e) {
-            throw new RuntimeException("Ocorreu um erro",  e);
-
-
         }
     }
 
+    private Map<String, Object> computeMonthlyConsumption(List<Consumption> consumptions) {
+        Consumption firstRecord = consumptions.get(0);
+        Consumption lastRecord = consumptions.get(consumptions.size() - 1);
 
+        double totalConsumption = lastRecord.getConsumption_kWh() - firstRecord.getConsumption_kWh();
+        long daysRecorded = ChronoUnit.DAYS.between(
+                firstRecord.getStart_data().toLocalDateTime().toLocalDate(),
+                lastRecord.getStart_data().toLocalDateTime().toLocalDate()
+        );
 
+        double dailyAverageConsumption = daysRecorded > 0 ? totalConsumption / daysRecorded : totalConsumption;
+        long currentTimestamp = System.currentTimeMillis() / 1000;
 
-    private Map<String, Object> calculateMonthlyConsumption(List<Consumption> consumptions) {
-        if (consumptions.isEmpty()) {
-            return Map.of("message", "Sem dados");
-        }
-
-        Consumption first = consumptions.get(0);
-        Consumption last = consumptions.get(consumptions.size() - 1);
-
-        double monthlyConsumption = last.getConsumption_kWh() - first.getConsumption_kWh();
-        long daysInMonth = ChronoUnit.DAYS.between(first.getStart_data().toLocalDateTime().toLocalDate(), last.getStart_data().toLocalDateTime().toLocalDate());
-
-        double dailyConsumption = 10.4;
-        if (daysInMonth > 0) {
-            dailyConsumption = monthlyConsumption / daysInMonth;
-        }
-
-        long timestampCalculation = System.currentTimeMillis() / 1000;
-
-        String month = first.getStart_data().toLocalDateTime().getMonth().getDisplayName(TextStyle.FULL, new Locale("pt", "BR"));
+        String referenceMonth = firstRecord.getStart_data().toLocalDateTime().getMonth()
+                .getDisplayName(TextStyle.FULL, new Locale("pt", "BR"));
 
         Map<String, Object> result = new HashMap<>();
-        result.put("instalacao_uuid", first.getInstallation_number());
-        result.put("timestamp_calculo", timestampCalculation);
-        result.put("dia_referencia", String.valueOf(first.getStart_data().toLocalDateTime().getDayOfMonth()));
-        result.put("mes_referencia", month);
-        result.put("ano_referencia", String.valueOf(first.getStart_data().toLocalDateTime().getYear()));
-        result.put("dias_para_acabar_o_mes", String.valueOf(30 - last.getStart_data().toLocalDateTime().getDayOfMonth()));
-        result.put("consumo_mensal_medio_kwh", monthlyConsumption);
-        result.put("consumo_diario_medio_kwh", dailyConsumption);
-        result.put("consumo_mensal_estimado_kwh", dailyConsumption * daysInMonth);
+        result.put("instalacao_uuid", firstRecord.getInstallation_number());
+        result.put("timestamp_calculo", currentTimestamp);
+        result.put("dia_referencia", String.valueOf(firstRecord.getStart_data().toLocalDateTime().getDayOfMonth()));
+        result.put("mes_referencia", referenceMonth);
+        result.put("ano_referencia", String.valueOf(firstRecord.getStart_data().toLocalDateTime().getYear()));
+        result.put("dias_para_acabar_o_mes", String.valueOf(ChronoUnit.DAYS.between(LocalDate.now(), LocalDate.now().withDayOfMonth(LocalDate.now().lengthOfMonth()))));
+        result.put("consumo_mensal_medio_kwh", totalConsumption);
+        result.put("consumo_diario_medio_kwh", dailyAverageConsumption);
+        result.put("consumo_mensal_estimado_kwh", dailyAverageConsumption * LocalDate.now().lengthOfMonth());
 
         return result;
     }
