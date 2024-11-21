@@ -78,11 +78,12 @@ public class Consumptions extends Connect {
     }
 
     private List<Consumption> getMonthlyConsumptionData(String installationNumber) {
-
         LocalDate firstDay = LocalDate.now().withDayOfMonth(1);
         LocalDate lastDay = firstDay.withDayOfMonth(firstDay.lengthOfMonth());
 
-        String sql = "SELECT * FROM consumptions WHERE installation_number = ? AND start_data BETWEEN ? AND ? ORDER BY start_data";
+
+
+        String sql = "SELECT *  FROM consumptions WHERE installation_number = ? AND start_data BETWEEN ? AND? ORDER BY start_data";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, installationNumber);
@@ -106,9 +107,14 @@ public class Consumptions extends Connect {
 
             return consumptions;
         } catch (SQLException e) {
-            throw new RuntimeException("Ocorreu um erro", e);
+            throw new RuntimeException("Ocorreu um erro",  e);
+
+
         }
     }
+
+
+
 
     private Map<String, Object> calculateMonthlyConsumption(List<Consumption> consumptions) {
         if (consumptions.isEmpty()) {
@@ -136,11 +142,12 @@ public class Consumptions extends Connect {
         result.put("dia_referencia", String.valueOf(first.getStart_data().toLocalDateTime().getDayOfMonth()));
         result.put("mes_referencia", month);
         result.put("ano_referencia", String.valueOf(first.getStart_data().toLocalDateTime().getYear()));
-        result.put("dias_para_acabar_o_mes", String.valueOf(last.getStart_data().toLocalDateTime().getDayOfMonth()));
+        result.put("dias_para_acabar_o_mes", String.valueOf(30 - last.getStart_data().toLocalDateTime().getDayOfMonth()));
         result.put("consumo_mensal_medio_kwh", monthlyConsumption);
         result.put("consumo_diario_medio_kwh", dailyConsumption);
         result.put("consumo_mensal_estimado_kwh", dailyConsumption * daysInMonth);
 
         return result;
     }
+
 }
