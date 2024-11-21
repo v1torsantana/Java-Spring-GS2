@@ -82,7 +82,6 @@ public class Clients extends Connect {
     @GetMapping("/show-client/{client_ID}")
     public ResponseEntity<List<Map<String, Object>>> getClientInfo(@PathVariable String client_ID) throws SQLException {
         String sql = "SELECT * FROM clients WHERE client_id=?";
-        Client client = null;
         pstmt = conn.prepareStatement(sql);
         pstmt.setString(1, client_ID);
         ResultSet rs = pstmt.executeQuery();

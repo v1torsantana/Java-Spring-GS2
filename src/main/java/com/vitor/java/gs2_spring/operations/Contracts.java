@@ -11,13 +11,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 
 
 @RestController
@@ -29,7 +26,9 @@ public class Contracts extends Connect {
     private Map<Integer, Contract> contract_database = new HashMap<>();
 
     @PostMapping("/register-contracts")
-    public ResponseEntity<String> setContractsInfos(@RequestBody Contract contract) {
+    public ResponseEntity<Map<String, Object>> setContractsInfos(@RequestBody Contract contract) {
+        Map<String, Object> response = new HashMap<>();
+
         if (conn != null) {
             try {
                 String check_client = "SELECT COUNT(*) FROM clients WHERE client_id=?";
@@ -38,7 +37,8 @@ public class Contracts extends Connect {
                 ResultSet rs = pstmt.executeQuery();
 
                 if (rs.next() && rs.getInt(1) == 0) {
-                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Cliente não encontrado");
+                    response.put("error", "Cliente não encontrado!");
+                    return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
                 }
 
                 String check_installation = "SELECT COUNT(*) FROM installations WHERE installation_number=?";
@@ -46,7 +46,8 @@ public class Contracts extends Connect {
                 pstmt.setString(1, contract.getInstallationNumber());
                 rs = pstmt.executeQuery();
                 if(rs.next() && rs.getInt(1)==0){
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Instalação não encontrada");
+                    response.put("error", "Instalação não encontrada!");
+                    return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
                 }
 
                 String check_contract = "SELECT COUNT(*) FROM contracts WHERE client_id =? AND installation_number=? AND contract_activity = true";
@@ -55,7 +56,8 @@ public class Contracts extends Connect {
                 pstmt.setString(2, contract.getInstallationNumber());
                 rs = pstmt.executeQuery();
                 if (rs.next() && rs.getInt(1) > 0) {
-                    return ResponseEntity.status(HttpStatus.CONFLICT).body("Já existe um contrato ativo para este cliente e instalação.");
+                    response.put("error", "Já existe um contrato ativo para esta instalação");
+                    return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
                 }
 
                 if (contract.getContract_durationMonths() % 3 == 0) {
@@ -71,15 +73,25 @@ public class Contracts extends Connect {
                     pstmt.setString(6, c_number);
                     pstmt.executeUpdate();
 
+                    response.put("client_id", contract.getClient_ID());
+                    response.put("installation_number", contract.getInstallationNumber());
+                    response.put("contract_number", contract.getContract_number());
+                    response.put("contract_duration", contract.getContract_durationMonths());
+                    response.put("contract_activity", true);
+                    response.put("start_data", contract.getStart_data());
+
+                    return ResponseEntity.ok(response);
+
                 } else {
-                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body("O contrato deve ter duração trimestral!");
+                    response.put("error", "O contrato deve ter duração trimestral!");
+                    return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
                 }
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
         }
-
-        return ResponseEntity.ok("Contrato adicionado com sucesso: " + contract.getContract_number());
+        response.put("error", "Conexão com o banco falhou.");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 
     }
 
@@ -99,7 +111,7 @@ public class Contracts extends Connect {
                     contractMap.put("contract_number", rs.getString("contract_number"));
                     contractMap.put("start_data", rs.getTimestamp("start_data"));
                     contractMap.put("contract_duration", rs.getInt("contract_duration"));
-                    contractMap.put("contract_activity", rs.getString("contract_activity"));
+                    contractMap.put("contract_activity", rs.getBoolean("contract_activity"));
                     contractMap.put("client_id", rs.getString("client_id"));
                     contractMap.put("installation_number", rs.getString("installation_number"));
                     contractList.add(contractMap);
@@ -175,18 +187,32 @@ public class Contracts extends Connect {
 
 
     @DeleteMapping("/delete-contract/{contract_number}")
-    public ResponseEntity<String> deleteContractsInfos(@PathVariable String contract_number) throws SQLException {
+    public ResponseEntity<Map<String, Object>> deleteContractsInfos(@PathVariable String contract_number) throws SQLException {
+
+        String select = "SELECT * FROM contracts WHERE contract_number=?";
+        pstmt = conn.prepareStatement(select);
+        pstmt.setString(1, contract_number);
+        ResultSet rs = pstmt.executeQuery();
+
+
         String sql = "UPDATE contracts SET contract_activity=? WHERE contract_number=?";
         pstmt = conn.prepareStatement(sql);
         pstmt.setBoolean(1, false);
         pstmt.setString(2, contract_number);
-        int rowsUpdated = pstmt.executeUpdate();
+        pstmt.executeUpdate();
 
-        if (rowsUpdated > 0) {
-            return ResponseEntity.ok("Contrato desativado com sucesso!");
-        } else {
-            return ResponseEntity.notFound().build();
+        if (rs.next()) {
+            Map<String, Object> contractsMap = new HashMap<>();
+            contractsMap.put("contract_number", rs.getString("contract_number"));
+            contractsMap.put("installation_number", rs.getString("installation_number"));
+            contractsMap.put("client_id", rs.getString("client_id"));
+            contractsMap.put("contract_activity", rs.getBoolean("contract_activity"));
+            contractsMap.put("start_data", rs.getString("start_data"));
+            contractsMap.put("contract_duration", rs.getInt("contract_duration"));
+
+            return ResponseEntity.ok(contractsMap);
+        }else{
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
         }
     }
-
 }
