@@ -10,7 +10,7 @@ public class Client {
     private String client_CPF;
     private String client_type;
     private String client_CEP;
-    private boolean client_activity;
+    private boolean client_activity = true;
 
      private static UUID generator_id(){
             UUID uuid = UUID.randomUUID();

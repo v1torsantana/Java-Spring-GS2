@@ -69,10 +69,6 @@ public class Contract {
         return client_ID;
     }
 
-    public String getInstallation_number() {
-        return installation_number;
-    }
-
     public String getClientId() {
         return client_ID;
     }

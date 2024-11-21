@@ -32,43 +32,48 @@ public class Contracts extends Connect {
     public ResponseEntity<String> setContractsInfos(@RequestBody Contract contract) {
         if (conn != null) {
             try {
-                System.out.println("Procurando pelo cliente com o ID: " + contract.getClientId());
-
-                String checkClient = "SELECT COUNT(*) FROM clients WHERE client_id = ?";
-                pstmt = conn.prepareStatement(checkClient);
-                pstmt.setString(1, contract.getClientId());
+                String check_client = "SELECT COUNT(*) FROM clients WHERE client_id=?";
+                pstmt = conn.prepareStatement(check_client);
+                pstmt.setString(1, contract.getClient_ID());
                 ResultSet rs = pstmt.executeQuery();
 
                 if (rs.next() && rs.getInt(1) == 0) {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Cliente não encontrado.");
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Cliente não encontrado");
                 }
 
-                System.out.println("Procurando pelo cliente com o InO: " + contract.getInstallationNumber());
-
-                String checkInstallation = "SELECT COUNT(*) FROM installations WHERE installation_number = ?";
-                pstmt = conn.prepareStatement(checkInstallation);
+                String check_installation = "SELECT COUNT(*) FROM installations WHERE installation_number=?";
+                pstmt = conn.prepareStatement(check_installation);
                 pstmt.setString(1, contract.getInstallationNumber());
                 rs = pstmt.executeQuery();
-
-                if (rs.next() && rs.getInt(1) == 0) {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Instalação não encontrada.");
+                if(rs.next() && rs.getInt(1)==0){
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Instalação não encontrada");
                 }
 
+                String check_contract = "SELECT COUNT(*) FROM contracts WHERE client_id =? AND installation_number=? AND contract_activity = true";
+                pstmt = conn.prepareStatement(check_contract);
+                pstmt.setString(1, contract.getClientId());
+                pstmt.setString(2, contract.getInstallationNumber());
+                rs = pstmt.executeQuery();
+                if (rs.next() && rs.getInt(1) > 0) {
+                    return ResponseEntity.status(HttpStatus.CONFLICT).body("Já existe um contrato ativo para este cliente e instalação.");
+                }
 
-                String sql = "INSERT INTO contracts (start_data, contract_duration, contract_activity, client_id, installation_number, contract_number) VALUES (?, ?, ?, ?, ?, ?)";
+                if (contract.getContract_durationMonths() % 3 == 0) {
+                    String sql = "INSERT INTO contracts (start_data, contract_duration, contract_activity, client_id, installation_number, contract_number) VALUES (?, ?, ?, ?, ?, ?)";
 
+                    pstmt = conn.prepareStatement(sql);
+                    String c_number = String.valueOf(contract.getContract_number());
+                    pstmt.setTimestamp(1, contract.getTimestamp());
+                    pstmt.setInt(2, contract.getContract_durationMonths());
+                    pstmt.setBoolean(3, true);
+                    pstmt.setString(4, contract.getClientId());
+                    pstmt.setString(5, contract.getInstallationNumber());
+                    pstmt.setString(6, c_number);
+                    pstmt.executeUpdate();
 
-                pstmt = conn.prepareStatement(sql);
-                String c_number = String.valueOf(contract.getContract_number());
-                pstmt.setTimestamp(1, contract.getTimestamp());
-                pstmt.setInt(2, contract.getContract_durationMonths());
-                pstmt.setBoolean(3, contract.isContract_activity());
-                pstmt.setString(4, contract.getClientId());
-                pstmt.setString(5, contract.getInstallationNumber());
-                pstmt.setString(6, c_number);
-                pstmt.executeUpdate();
-
-
+                } else {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body("O contrato deve ter duração trimestral!");
+                }
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
@@ -144,19 +149,27 @@ public class Contracts extends Connect {
 
     @PutMapping("/update-contracts/{contract_number}")
     public ResponseEntity<String> updateContractsInfos(@PathVariable String contract_number, @RequestBody Contract contract) throws SQLException {
-        String sql = "UPDATE contracts SET start_data=?, contract_duration=?, contract_activity=? WHERE contract_number=?";
-        pstmt = conn.prepareStatement(sql);
-        pstmt.setTimestamp(1, contract.getTimestamp());
-        pstmt.setInt(2, contract.getContract_durationMonths());
-        pstmt.setBoolean(3, contract.isContract_activity());
-        pstmt.setString(4, contract_number);
+        try {
+            if (contract.getContract_durationMonths() % 3 == 0) {
+                String sql = "UPDATE contracts SET start_data=?, contract_duration=?, contract_activity=? WHERE contract_number=?";
+                pstmt = conn.prepareStatement(sql);
+                pstmt.setTimestamp(1, contract.getTimestamp());
+                pstmt.setInt(2, contract.getContract_durationMonths());
+                pstmt.setBoolean(3, contract.isContract_activity());
+                pstmt.setString(4, contract_number);
 
-        int rowsUpdated = pstmt.executeUpdate();
+                int rowsUpdated = pstmt.executeUpdate();
 
-        if (rowsUpdated > 0) {
-            return ResponseEntity.ok("Contrato atualizado com sucesso!");
-        } else {
-            return ResponseEntity.notFound().build();
+                if (rowsUpdated > 0) {
+                    return ResponseEntity.ok("Contrato atualizado com sucesso!");
+                } else {
+                    return ResponseEntity.notFound().build();
+                }
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("O contrato deve ter duração trimestral!");
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 

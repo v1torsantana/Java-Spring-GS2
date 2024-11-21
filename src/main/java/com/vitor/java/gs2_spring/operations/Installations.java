@@ -28,17 +28,32 @@ public class Installations extends Connect {
     public ResponseEntity<String> setInstallationInfos(@RequestBody Installation installation) throws SQLException {
         if (conn != null) {
             try {
-                String sql = "INSERT INTO installations (installation_number, installation_address, installation_CEP, installation_activity) VALUES (?, ?, ?, ?)";
-                String i_number = String.valueOf(installation.getInstallation_number());
-                pstmt = conn.prepareStatement(sql);
-                pstmt.setString(1, i_number);
-                pstmt.setString(2, installation.getInstallation_address());
-                pstmt.setString(3, installation.getInstallation_CEP());
-                pstmt.setBoolean(4, installation.isInstallation_activity());
-                pstmt.executeUpdate();
+                String checkInstallation = "SELECT COUNT(*) FROM installations WHERE installation_CEP=?";
+                pstmt = conn.prepareStatement(checkInstallation);
+                pstmt.setString(1, installation.getInstallation_CEP());
+                ResultSet rs = pstmt.executeQuery();
 
-                return ResponseEntity.ok("Instalação cadastrada com sucesso!");
+                if (rs.next() && rs.getInt(1) > 0) {
+                    return ResponseEntity.status(HttpStatus.CONFLICT).body("Instalação (CEP) já cadastrada!");
+                }
 
+
+                if(installation.getInstallation_CEP().length()==8) {
+                    String sql = "INSERT INTO installations (installation_number, installation_address, installation_CEP, installation_activity) VALUES (?, ?, ?, ?)";
+                    String i_number = String.valueOf(installation.getInstallation_number());
+                    pstmt = conn.prepareStatement(sql);
+                    pstmt.setString(1, i_number);
+                    pstmt.setString(2, installation.getInstallation_address());
+                    pstmt.setString(3, installation.getInstallation_CEP());
+                    pstmt.setBoolean(4, true);
+                    pstmt.executeUpdate();
+
+                    return ResponseEntity.ok("Instalação cadastrada com sucesso!");
+
+                }
+                else{
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body("CEP com dígitos errados!");
+                }
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
@@ -95,7 +110,6 @@ public class Installations extends Connect {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
 
@@ -104,14 +118,20 @@ public class Installations extends Connect {
 
     @PutMapping("/update-installation/{installation_number}")
     public ResponseEntity<String> updateInstallationInfos(@PathVariable String installation_number, @RequestBody Installation installation) throws SQLException {
-        String sql = "UPDATE installations SET installation_address=?, installation_CEP=?, installation_activity=? WHERE installation_number=?";
-        pstmt = conn.prepareStatement(sql);
-        pstmt.setString(1, installation.getInstallation_address());
-        pstmt.setString(2, installation.getInstallation_CEP());
-        pstmt.setBoolean(3, installation.isInstallation_activity());
-        pstmt.setString(4, installation_number);
-
-
+        try {
+            if (installation.getInstallation_CEP().length() == 8) {
+                String sql = "UPDATE installations SET installation_address=?, installation_CEP=?, installation_activity=? WHERE installation_number=?";
+                pstmt = conn.prepareStatement(sql);
+                pstmt.setString(1, installation.getInstallation_address());
+                pstmt.setString(2, installation.getInstallation_CEP());
+                pstmt.setBoolean(3, true);
+                pstmt.setString(4, installation_number);
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("CEP com dígitos errados!");
+            }
+        }catch(SQLException e){
+            throw new RuntimeException(e);
+        }
         pstmt.executeUpdate();
         return ResponseEntity.ok("Instalação atualizada com sucesso!");
     }
