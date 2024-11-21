@@ -165,7 +165,8 @@ public class Clients extends Connect {
 
     @DeleteMapping("/delete-client/{client_ID}")
     public ResponseEntity<Map<String, Object>> deleteClientInfos(@PathVariable String client_ID) throws SQLException {
-        // Recuperando os dados do cliente antes de desativá-lo
+
+
         String selectSql = "SELECT * FROM clients WHERE client_id=?";
         pstmt = conn.prepareStatement(selectSql);
         pstmt.setString(1, client_ID);

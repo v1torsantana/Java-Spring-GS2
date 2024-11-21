@@ -7,7 +7,7 @@ public class Installation {
     private final UUID installation_number;
     private String installation_address;
     private String installation_CEP;
-    private boolean installation_activity;
+    private boolean installation_activity = true;
 
     private static UUID generator_id(){
         UUID uuid = UUID.randomUUID();

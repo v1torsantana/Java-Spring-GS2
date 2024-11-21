@@ -25,7 +25,8 @@ public class Installations extends Connect {
     private Map<Integer, Installation> installations_database = new HashMap<>();
 
     @PostMapping("/register-installation")
-    public ResponseEntity<String> setInstallationInfos(@RequestBody Installation installation) throws SQLException {
+    public ResponseEntity<Map<String, Object>> setInstallationInfos(@RequestBody Installation installation) throws SQLException {
+        Map<String, Object> response = new HashMap<>();
         if (conn != null) {
             try {
                 String checkInstallation = "SELECT COUNT(*) FROM installations WHERE installation_CEP=?";
@@ -34,31 +35,38 @@ public class Installations extends Connect {
                 ResultSet rs = pstmt.executeQuery();
 
                 if (rs.next() && rs.getInt(1) > 0) {
-                    return ResponseEntity.status(HttpStatus.CONFLICT).body("Instalação (CEP) já cadastrada!");
+                    response.put("error", "Instalação (CEP) já cadastrada!");
+                    return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
                 }
 
+                    if (installation.getInstallation_CEP().length() == 8) {
+                        String sql = "INSERT INTO installations (installation_number, installation_address, installation_CEP, installation_activity) VALUES (?, ?, ?, ?)";
+                        String i_number = String.valueOf(installation.getInstallation_number());
+                        pstmt = conn.prepareStatement(sql);
+                        pstmt.setString(1, i_number);
+                        pstmt.setString(2, installation.getInstallation_address());
+                        pstmt.setString(3, installation.getInstallation_CEP());
+                        pstmt.setBoolean(4, true);
+                        pstmt.executeUpdate();
 
-                if(installation.getInstallation_CEP().length()==8) {
-                    String sql = "INSERT INTO installations (installation_number, installation_address, installation_CEP, installation_activity) VALUES (?, ?, ?, ?)";
-                    String i_number = String.valueOf(installation.getInstallation_number());
-                    pstmt = conn.prepareStatement(sql);
-                    pstmt.setString(1, i_number);
-                    pstmt.setString(2, installation.getInstallation_address());
-                    pstmt.setString(3, installation.getInstallation_CEP());
-                    pstmt.setBoolean(4, true);
-                    pstmt.executeUpdate();
+                        response.put("installation_address", installation.getInstallation_address());
+                        response.put("installation_CEP", installation.getInstallation_CEP());
+                        response.put("installation_activity", true);
+                        response.put("installation_id", installation.getInstallation_number());
 
-                    return ResponseEntity.ok("Instalação cadastrada com sucesso!");
+                        return ResponseEntity.ok(response);
 
-                }
-                else{
-                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body("CEP com dígitos errados!");
-                }
+                    } else {
+                        response.put("error", "CEP com dígitos errados!");
+                        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+                    }
+
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
         }
-        return ResponseEntity.ok("Sucesso!");
+        response.put("error", "Conexão com o banco falhou.");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 
     @GetMapping("/show-installation/{installation_number}")
@@ -137,12 +145,34 @@ public class Installations extends Connect {
     }
 
     @DeleteMapping("/delete-installation/{installation_number}")
-    public ResponseEntity<String> deleteInstallationInfos(@PathVariable String installation_number) throws SQLException {
-        String sql = "UPDATE installations SET installation_activity=? WHERE installation_number=?";
-        pstmt = conn.prepareStatement(sql);
-        pstmt.setBoolean(1, false);
-        pstmt.setString(2, installation_number);
-        pstmt.executeUpdate();
-        return ResponseEntity.ok("Instalação desativada com sucesso!");
+    public ResponseEntity<Map<String, Object>> deleteInstallationInfos(@PathVariable String installation_number) throws SQLException {
+
+
+
+
+        String select= "SELECT * FROM installations WHERE installation_number=?";
+        pstmt = conn.prepareStatement(select);
+        pstmt.setString(1, installation_number);
+        ResultSet rs = pstmt.executeQuery();
+
+        if (rs.next()) {
+            String sql = "UPDATE installations SET installation_activity=? WHERE installation_number=?";
+            pstmt = conn.prepareStatement(sql);
+            pstmt.setBoolean(1, false);
+            pstmt.setString(2, installation_number);
+            pstmt.executeUpdate();
+
+            Map<String, Object> installationsMap = new HashMap<>();
+            installationsMap.put("installation_number", rs.getString("installation_number"));
+            installationsMap.put("installation_address", rs.getString("installation_address"));
+            installationsMap.put("installation_CEP", rs.getString("installation_CEP"));
+            installationsMap.put("installation_activity", rs.getBoolean("installation_activity"));
+
+            return ResponseEntity.ok(installationsMap);
+        }
+        else{
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+
+        }
     }
 }
