@@ -15,7 +15,7 @@ public class Client {
      private static UUID generator_id(){
             UUID uuid = UUID.randomUUID();
             return uuid;
-        }
+     }
 
     public Client(String client_name, String client_address, String client_CPF, String client_type, String client_CEP, boolean client_activity) {
         this.client_ID = Client.generator_id();

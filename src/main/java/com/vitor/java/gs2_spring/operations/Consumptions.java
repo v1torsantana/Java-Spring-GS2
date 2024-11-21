@@ -22,7 +22,7 @@ public class Consumptions extends Connect {
 
     @PostMapping("/register-consumption")
     public ResponseEntity<String> createConsumption(@RequestBody Consumption consumption) {
-        String sql = "INSERT INTO consumptions (consumpt_id, installation_number, consumption_kWh, timestamp_measuring, start_data) VALUES (?, ?, ?, FROM_UNIXTIME(?), ?)";
+        String sql = "INSERT INTO consumptions (consumpt_id, installation_number, consumption_kWh, timestamp_measuring, start_data) VALUES (?, ?, ?, ?, ?)";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             String id = String.valueOf(consumption.getConsumption_id());

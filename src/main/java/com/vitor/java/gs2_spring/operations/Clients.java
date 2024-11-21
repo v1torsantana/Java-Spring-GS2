@@ -29,7 +29,10 @@ public class Clients extends Connect {
 
         if (conn != null) {
             try {
-                //FAZER CHECAGEM DE SE A PESSOA JÁ ESTÁ CADASTRADA
+                //todo:FAZER CHECAGEM DE SE A PESSOA JÁ ESTÁ CADASTRADA
+                //todo: CHECAGEM DE CPF e CEP
+
+                
                 String sql = "INSERT INTO clients (client_id, client_name, client_address, client_CPF, client_type, client_CEP, client_activity) VALUES (?, ?, ?, ?, ?, ?, ?)";
                 String id = String.valueOf(client.getClientID());
                 pstmt = conn.prepareStatement(sql);
