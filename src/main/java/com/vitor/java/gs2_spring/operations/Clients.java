@@ -28,6 +28,7 @@ public class Clients extends Connect {
         Map<String, Object> response = new HashMap<>();
         if (conn != null) {
             try {
+
                 String checkClient = "SELECT COUNT(*) FROM clients WHERE client_CPF=?";
                 pstmt = conn.prepareStatement(checkClient);
                 pstmt.setString(1, client.getClient_CPF());
@@ -37,6 +38,8 @@ public class Clients extends Connect {
                     response.put("error", "Cliente (CPF) já cadastrado!");
                     return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
                 }
+
+
 
                 if (client.getClient_CEP().length() == 8) {
                     if (client.getClient_CPF().length() == 11) {
